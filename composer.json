@@ -1,6 +1,6 @@
 {
     "name": "linzc/think-queue-rabbitmq",
-    "description": "RabbitMQ driver for ThinkPHP Queue.",
+    "description": "RabbitMQ driver for ThinkPHP6 Queue.",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -29,5 +29,6 @@
             ]
         }
     },
-    "minimum-stability": "dev"
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }
