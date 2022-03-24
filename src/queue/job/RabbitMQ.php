@@ -69,7 +69,20 @@ class RabbitMQ extends Job
     /**
      * {@inheritdoc}
      */
-    public function delete(): void
+    public function markAsFailed()
+    {
+        parent::markAsFailed();
+
+        // We must tel rabbitMQ this Job is failed
+        // The message must be rejected when the Job marked as failed, in case rabbitMQ wants to do some extra magic.
+        // like: Death lettering the message to an other exchange/routing-key.
+        $this->rabbitmq->reject($this);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function delete()
     {
         parent::delete();
 
@@ -86,7 +99,7 @@ class RabbitMQ extends Job
      * @param int $delay
      * @throws AMQPProtocolChannelException
      */
-    public function release($delay = 0): void
+    public function release($delay = 0)
     {
         parent::release();
 
