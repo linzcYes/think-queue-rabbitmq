@@ -27,6 +27,19 @@ class RabbitMQ extends Job
      */
     protected $message;
 
+    /**
+     * The JSON decoded version of "$job".
+     *
+     * @var array
+     */
+    protected $decoded;
+
+    /** @var bool */
+    protected $acked = false;
+
+    /** @var bool */
+    protected $rejected = false;
+
     public function __construct(App $app, RabbitMQQueue $rabbitmq, $job, $connection, $queue)
     {
         $this->app        = $app;
@@ -34,6 +47,8 @@ class RabbitMQ extends Job
         $this->queue      = $queue;
         $this->rabbitmq   = $rabbitmq;
         $this->connection = $connection;
+
+        $this->decoded = $this->payload();
     }
 
     /**
@@ -41,7 +56,7 @@ class RabbitMQ extends Job
      */
     public function getJobId()
     {
-        return '';
+        return $this->decoded['id'] ?? null;
     }
 
     /**
@@ -76,7 +91,9 @@ class RabbitMQ extends Job
         // We must tel rabbitMQ this Job is failed
         // The message must be rejected when the Job marked as failed, in case rabbitMQ wants to do some extra magic.
         // like: Death lettering the message to an other exchange/routing-key.
-        $this->rabbitmq->reject($this);
+        if (! $this->isAckedOrRejected()) {
+            $this->reject($this);
+        }
     }
 
     /**
@@ -88,8 +105,8 @@ class RabbitMQ extends Job
 
         // When delete is called and the Job was not failed, the message must be acknowledged.
         // This is because this is a controlled call by a developer. So the message was handled correct.
-        if (! $this->failed) {
-            $this->rabbitmq->ack($this);
+        if (! $this->isAckedOrRejected()) {
+            $this->ack();
         }
     }
 
@@ -109,7 +126,59 @@ class RabbitMQ extends Job
         // Releasing a Job means the message was failed to process.
         // Because this Job message is always recreated and pushed as new message, this Job message is correctly handled.
         // We must tell rabbitMQ this job message can be removed by acknowledging the message.
+        if (! $this->isAckedOrRejected()) {
+            $this->ack();
+        }
+    }
+
+    /**
+     * acked the messge
+     */
+    public function ack()
+    {
         $this->rabbitmq->ack($this);
+
+        $this->acked = true;
+    }
+
+    /**
+     * Determine if the job has been acked
+     *
+     * @return bool
+     */
+    public function isAcked()
+    {
+        return $this->acked;
+    }
+
+    /**
+     * reject the message
+     */
+    public function reject()
+    {
+        $this->rabbitmq->reject($this);
+
+        $this->rejected = true;
+    }
+
+    /**
+     * Determine if the job has been rejected
+     *
+     * @return bool
+     */
+    public function isRejected()
+    {
+        return $this->rejected;
+    }
+
+    /**
+     * Determine if the job has been acked or rejected.
+     *
+     * @return bool
+     */
+    public function isAckedOrRejected()
+    {
+        return $this->isAcked() || $this->isRejected();
     }
 
     /**

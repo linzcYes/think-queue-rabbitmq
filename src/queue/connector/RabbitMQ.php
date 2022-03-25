@@ -354,6 +354,30 @@ class RabbitMQ extends Connector
     }
 
     /**
+     * Create a payload array from the given job and data.
+     *
+     * @param $job
+     * @param string $data
+     * @return array
+     */
+    protected function createPayloadArray($job, $data = '')
+    {
+        return array_merge(parent::createPayloadArray($job, $data), [
+            'id' => $this->getRandomId(),
+        ]);
+    }
+
+    /**
+     * Get a random ID string.
+     *
+     * @return string
+     */
+    protected function getRandomId(): string
+    {
+        return Str::random(32);
+    }
+
+    /**
      * Declare the destination when necessary.
      *
      * @param string $destination
@@ -786,7 +810,7 @@ class RabbitMQ extends Connector
      */
     public function close(): void
     {
-        if ($this->currentJob && ! $this->currentJob->isDeletedOrReleased()) {
+        if ($this->currentJob && ! $this->currentJob->isAckedOrRejected()) {
             $this->reject($this->currentJob, true);
         }
 
